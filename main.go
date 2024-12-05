@@ -29,8 +29,8 @@ func main() {
 		astCmd.Parse(os.Args[2:])
 
 		if *astHelp {
-      fmt.Println("dockerfile-tools ast [options]")
-      fmt.Println("")
+			fmt.Println("dockerfile-tools ast [options]")
+			fmt.Println("")
 			fmt.Println("  --dockerfile string")
 			fmt.Println("        path to Dockerfile")
 			fmt.Println("  --help")
@@ -53,8 +53,8 @@ func main() {
 		listStagesCmd.Parse(os.Args[2:])
 
 		if *listStagesHelp {
-      fmt.Println("dockerfile-tools list-stages [options]")
-      fmt.Println("")
+			fmt.Println("dockerfile-tools list-stages [options]")
+			fmt.Println("")
 			fmt.Println("  --dockerfile string")
 			fmt.Println("        path to Dockerfile")
 			fmt.Println("  --help")
