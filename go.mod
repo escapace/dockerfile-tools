@@ -1,6 +1,6 @@
 module github.com/escapace/dockerfile-tools
 
-go 1.23.3
+go 1.23
 
 require github.com/moby/buildkit v0.18.1
 
