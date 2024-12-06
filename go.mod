@@ -2,7 +2,10 @@ module github.com/escapace/dockerfile-tools
 
 go 1.23
 
-require github.com/moby/buildkit v0.18.1
+require (
+	github.com/iancoleman/strcase v0.3.0
+	github.com/moby/buildkit v0.18.1
+)
 
 require (
 	github.com/containerd/typeurl/v2 v2.2.3 // indirect

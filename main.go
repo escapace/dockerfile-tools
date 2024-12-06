@@ -10,8 +10,9 @@ func printHelp() {
 	fmt.Println("dockerfile-tools <command> [options]")
 	fmt.Println("")
 	fmt.Println("Commands:")
-	fmt.Println("  ast           Generate a JSON AST from a Dockerfile")
-	fmt.Println("  list-stages   List the build stages from a Dockerfile")
+	fmt.Println("  ast                Generate a JSON AST from a Dockerfile")
+	fmt.Println("  list-stages        List the build stages of a Dockerfile")
+	fmt.Println("  list-cache-mounts  List the cache mounts of a Dockerfile")
 	fmt.Println("Use \"dockerfile-tools <command> --help\" for more information about a command.")
 }
 
@@ -69,6 +70,30 @@ func main() {
 
 		// Call the function from list-stages.go
 		ListStages(*dockerfile)
+
+	case "list-cache-mounts":
+		listCacheMountCmd := flag.NewFlagSet("list-cache-mounts", flag.ExitOnError)
+		dockerfile := listCacheMountCmd.String("dockerfile", "", "path to Dockerfile")
+		listCacheMountHelp := listCacheMountCmd.Bool("help", false, "display help")
+		listCacheMountCmd.Parse(os.Args[2:])
+
+		if *listCacheMountHelp {
+			fmt.Println("dockerfile-tools list-cache-mounts [options]")
+			fmt.Println("")
+			fmt.Println("  --dockerfile string")
+			fmt.Println("        path to Dockerfile")
+			fmt.Println("  --help")
+			fmt.Println("        display help")
+			os.Exit(0)
+		}
+
+		if *dockerfile == "" {
+			fmt.Println("Please provide a path to the Dockerfile using --dockerfile")
+			os.Exit(1)
+		}
+
+		// Call the function
+		ListCacheMounts(*dockerfile)
 
 	default:
 		fmt.Println("Error: expected 'ast' or 'list-stages' subcommands")

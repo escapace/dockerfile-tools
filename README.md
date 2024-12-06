@@ -1,9 +1,9 @@
 # dockerfile-tools
 
-A command line application designed to assist with analyzing and extracting
-information from Dockerfiles. It provides two main functionalities: generating a
-JSON Abstract Syntax Tree (AST) from a Dockerfile and listing the build stages
-defined within a Dockerfile.
+A command-line application designed to assist with analyzing and extracting
+information from Dockerfiles. It provides three main functionalities: generating a
+JSON Abstract Syntax Tree (AST) from a Dockerfile, listing the build stages defined
+within a Dockerfile, and listing cache mounts in RUN instructions.
 
 ## Usage
 
@@ -26,7 +26,7 @@ dockerfile-tools ast --dockerfile path/to/Dockerfile
 
 ### list-stages
 
-Lists the build stages from a specified Dockerfile.
+Lists the build stages of a specified Dockerfile.
 
 #### Options
 
@@ -37,6 +37,25 @@ Lists the build stages from a specified Dockerfile.
 
 ```bash
 dockerfile-tools list-stages --dockerfile path/to/Dockerfile
+```
+
+### list-cache-mounts
+
+Extracts --mount=type=cache flags from RUN instructions in a Dockerfile and outputs a JSON object.
+The target paths are used as the values, while the keys are derived by replacing / with spaces and
+converting the result to kebab-case. The output is compatible with the `cache-map` option of
+[buildkit-cache-dance](https://github.com/reproducible-containers/buildkit-cache-dance), making it
+easier to define cache mappings for reproducible builds.
+
+#### Options
+
+- `--dockerfile string`: Path to the Dockerfile.
+- `--help`: Display help information for the `list-cache-mounts` command.
+
+#### Example
+
+```bash
+dockerfile-tools list-cache-mounts --dockerfile path/to/Dockerfile
 ```
 
 ## Help
