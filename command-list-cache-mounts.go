@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/moby/buildkit/frontend/dockerfile/parser"
-  "github.com/iancoleman/strcase"
+  "github.com/samber/lo"
 )
 
 func ListCacheMounts(dockerfilePath string) {
@@ -51,7 +51,7 @@ func ListCacheMounts(dockerfilePath string) {
 							target = target[:commaIdx]
 						}
 						// Convert the target to kebab-case and add to the map
-						data[strcase.ToKebab(strings.ReplaceAll(target, "/", " "))] = target
+						data[lo.KebabCase(target)] = target
 					}
 				}
 			}
