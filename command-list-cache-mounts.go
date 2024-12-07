@@ -11,6 +11,7 @@ import (
 
 	"github.com/moby/buildkit/frontend/dockerfile/parser"
 	"github.com/samber/lo"
+	"github.com/wk8/go-ordered-map/v2"
 )
 
 func parseArgs(args []string) map[string]string {
@@ -37,12 +38,12 @@ func parseArgs(args []string) map[string]string {
 	return argMap
 }
 
-func parseMountOptions(flag string, argMap map[string]string) map[string]string {
+func parseMountOptions(flag string, argMap map[string]string) *orderedmap.OrderedMap[string, string] {
 	// Match key-value pairs, considering quoted values
 	regex := regexp.MustCompile(`([^=,\s]+)=((?:"[^"]*")|(?:[^",]+))`)
 	matches := regex.FindAllStringSubmatch(flag, -1)
 
-	options := map[string]string{}
+	options := orderedmap.New[string, string]()
 	for _, match := range matches {
 		key := match[1]
 		if key == "--mount" {
@@ -56,7 +57,7 @@ func parseMountOptions(flag string, argMap map[string]string) map[string]string 
 			value = strings.ReplaceAll(value, fmt.Sprintf("$%s", argKey), argValue)
 		}
 
-		options[key] = value
+		options.Set(key, value)
 	}
 	return options
 }
@@ -88,7 +89,7 @@ func ListCacheMounts(dockerfilePath string, args []string) {
 	}
 
 	// Initialize the map to hold cache mount data
-	data := map[string]map[string]string{}
+	data := orderedmap.New[string, *orderedmap.OrderedMap[string, string]]()
 
 	// Traverse the AST to find RUN instructions with --mount=type=cache
 	for _, child := range result.AST.Children {
@@ -97,11 +98,21 @@ func ListCacheMounts(dockerfilePath string, args []string) {
 				if strings.Contains(flag, "--mount=type=cache") {
 					// Extract mount options and parse them
 					options := parseMountOptions(flag, argMap)
-					if target, ok := options["target"]; ok {
-						// Convert the target to kebab-case for the key
-						key := lo.KebabCase(target)
-						data[key] = options
+
+					var key string
+
+					if id, exists := options.Get("id"); exists {
+						// Use the kebab-case of the "id" value as the key
+						key = lo.KebabCase(id)
+					} else if target, exists := options.Get("target"); exists {
+						// Use the kebab-case of the "target" value as the fallback key
+						key = lo.KebabCase(target)
+					} else {
+						// Skip if neither "id" nor "target" is present
+						continue
 					}
+
+					data.Set(".cache-"+key, options)
 				}
 			}
 		}
