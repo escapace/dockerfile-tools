@@ -1,10 +1,10 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 )
+import flag "github.com/spf13/pflag"
 
 func printHelp() {
 	fmt.Println("dockerfile-tools <command> [options]")
@@ -72,20 +72,24 @@ func main() {
 		ListStages(*dockerfile)
 
 	case "list-cache-mounts":
-		listCacheMountCmd := flag.NewFlagSet("list-cache-mounts", flag.ExitOnError)
-		dockerfile := listCacheMountCmd.String("dockerfile", "", "path to Dockerfile")
-		listCacheMountHelp := listCacheMountCmd.Bool("help", false, "display help")
-		listCacheMountCmd.Parse(os.Args[2:])
+		listCacheMountsCmd := flag.NewFlagSet("list-cache-mounts", flag.ExitOnError)
+		dockerfile := listCacheMountsCmd.String("dockerfile", "", "path to Dockerfile")
+    args := listCacheMountsCmd.StringSlice("arg", nil, "comma-delimited ARG key-value pairs (can be provided multiple times)")
+		listCacheMountsHelp := listCacheMountsCmd.Bool("help", false, "display help")
+		listCacheMountsCmd.Parse(os.Args[2:])
 
-		if *listCacheMountHelp {
+		if *listCacheMountsHelp {
 			fmt.Println("dockerfile-tools list-cache-mounts [options]")
 			fmt.Println("")
 			fmt.Println("  --dockerfile string")
 			fmt.Println("        path to Dockerfile")
+			fmt.Println("  --arg string")
+			fmt.Println("        comma-delimited ARG key-value pairs (can be provided multiple times)")
 			fmt.Println("  --help")
 			fmt.Println("        display help")
 			os.Exit(0)
 		}
+
 
 		if *dockerfile == "" {
 			fmt.Println("Please provide a path to the Dockerfile using --dockerfile")
@@ -93,7 +97,7 @@ func main() {
 		}
 
 		// Call the function
-		ListCacheMounts(*dockerfile)
+		ListCacheMounts(*dockerfile, *args)
 
 	default:
 		fmt.Println("Error: expected 'ast' or 'list-stages' subcommands")

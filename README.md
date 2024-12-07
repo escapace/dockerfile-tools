@@ -50,12 +50,14 @@ easier to define cache mappings for reproducible builds.
 #### Options
 
 - `--dockerfile string`: Path to the Dockerfile.
+- `--arg`: comma-delimited ARG key-value pairs
 - `--help`: Display help information for the `list-cache-mounts` command.
 
 #### Example
 
 ```bash
-dockerfile-tools list-cache-mounts --dockerfile path/to/Dockerfile
+dockerfile-tools list-cache-mounts --dockerfile path/to/Dockerfile \
+--arg BUILDPLATFORM=linux/amd64 --arg BUILDOS=linux,BUILDARCH=amd64
 ```
 
 ## Help
