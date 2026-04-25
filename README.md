@@ -26,7 +26,8 @@ dockerfile-tools ast --dockerfile path/to/Dockerfile
 
 ### list-stages
 
-Lists the build stages of a specified Dockerfile.
+Lists the aliased build stages of a specified Dockerfile.
+Only `FROM ... AS <name>` stages are included in the output.
 
 #### Options
 
@@ -65,7 +66,7 @@ Example output:
 #### Options
 
 - `--dockerfile string`: Path to the Dockerfile.
-- `--arg`: comma-delimited ARG key-value pairs
+- `--arg`: comma-delimited ARG key-value pairs. Can be provided multiple times.
 - `--help`: Display help information for the `list-cache-mounts` command.
 
 #### Example
