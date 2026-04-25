@@ -41,11 +41,26 @@ dockerfile-tools list-stages --dockerfile path/to/Dockerfile
 
 ### list-cache-mounts
 
-Extracts --mount=type=cache flags from RUN instructions in a Dockerfile and outputs a JSON object.
-The target paths are used as the values, while the keys are derived by replacing / with spaces and
-converting the result to kebab-case. The output is compatible with the `cache-map` option of
-[buildkit-cache-dance](https://github.com/reproducible-containers/buildkit-cache-dance), making it
-easier to define cache mappings for reproducible builds.
+Extracts `type=cache` mounts from `RUN` instructions in a Dockerfile and outputs a JSON object.
+Each key is derived from the mount `id` when present, or from `target` as a fallback, by converting
+that value to kebab-case and prefixing it with `.cache-`. Each value is an object containing the
+parsed mount options, such as `type`, `target`, `id`, and `sharing`.
+
+The parser recognizes cache mounts regardless of option order. It also expands both `$ARG` and
+`${ARG}` placeholders using values passed with `--arg`, plus default values for `BUILDOS`,
+`BUILDARCH`, and `BUILDPLATFORM`.
+
+Example output:
+
+```json
+{
+  ".cache-go-pkg-mod": {
+    "type": "cache",
+    "target": "/go/pkg/mod",
+    "sharing": "locked"
+  }
+}
+```
 
 #### Options
 

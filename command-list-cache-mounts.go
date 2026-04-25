@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 
@@ -38,27 +37,58 @@ func parseArgs(args []string) map[string]string {
 	return argMap
 }
 
-func parseMountOptions(flag string, argMap map[string]string) *orderedmap.OrderedMap[string, string] {
-	// Match key-value pairs, considering quoted values
-	regex := regexp.MustCompile(`([^=,\s]+)=((?:"[^"]*")|(?:[^",]+))`)
-	matches := regex.FindAllStringSubmatch(flag, -1)
+func splitCommaSeparated(input string) []string {
+	parts := []string{}
+	var current strings.Builder
+	inQuotes := false
 
-	options := orderedmap.New[string, string]()
-	for _, match := range matches {
-		key := match[1]
-		if key == "--mount" {
-			continue // Skip the --mount key
+	for _, char := range input {
+		switch char {
+		case '"':
+			inQuotes = !inQuotes
+			current.WriteRune(char)
+		case ',':
+			if inQuotes {
+				current.WriteRune(char)
+				continue
+			}
+			parts = append(parts, current.String())
+			current.Reset()
+		default:
+			current.WriteRune(char)
 		}
-
-		value := strings.Trim(match[2], `"`) // Remove quotes if present
-
-		// Replace $ARG variables with provided values
-		for argKey, argValue := range argMap {
-			value = strings.ReplaceAll(value, fmt.Sprintf("$%s", argKey), argValue)
-		}
-
-		options.Set(key, value)
 	}
+
+	parts = append(parts, current.String())
+	return parts
+}
+
+func substituteArgs(value string, argMap map[string]string) string {
+	for argKey, argValue := range argMap {
+		value = strings.ReplaceAll(value, fmt.Sprintf("${%s}", argKey), argValue)
+		value = strings.ReplaceAll(value, fmt.Sprintf("$%s", argKey), argValue)
+	}
+
+	return value
+}
+
+func parseMountOptions(flag string, argMap map[string]string) *orderedmap.OrderedMap[string, string] {
+	options := orderedmap.New[string, string]()
+
+	mountDefinition, found := strings.CutPrefix(flag, "--mount=")
+	if !found {
+		return options
+	}
+
+	for _, part := range splitCommaSeparated(mountDefinition) {
+		key, value, hasValue := strings.Cut(part, "=")
+		if !hasValue {
+			continue
+		}
+
+		options.Set(key, substituteArgs(strings.Trim(value, `"`), argMap))
+	}
+
 	return options
 }
 
@@ -91,30 +121,37 @@ func ListCacheMounts(dockerfilePath string, args []string) {
 	// Initialize the map to hold cache mount data
 	data := orderedmap.New[string, *orderedmap.OrderedMap[string, string]]()
 
-	// Traverse the AST to find RUN instructions with --mount=type=cache
+	// Traverse the AST to find RUN instructions with cache mounts.
 	for _, child := range result.AST.Children {
-		if child.Value == "RUN" && child.Flags != nil {
-			for _, flag := range child.Flags {
-				if strings.Contains(flag, "--mount=type=cache") {
-					// Extract mount options and parse them
-					options := parseMountOptions(flag, argMap)
+		if child.Value != "RUN" || child.Flags == nil {
+			continue
+		}
 
-					var key string
-
-					if id, exists := options.Get("id"); exists {
-						// Use the kebab-case of the "id" value as the key
-						key = lo.KebabCase(id)
-					} else if target, exists := options.Get("target"); exists {
-						// Use the kebab-case of the "target" value as the fallback key
-						key = lo.KebabCase(target)
-					} else {
-						// Skip if neither "id" nor "target" is present
-						continue
-					}
-
-					data.Set(".cache-"+key, options)
-				}
+		for _, flag := range child.Flags {
+			if !strings.HasPrefix(flag, "--mount=") {
+				continue
 			}
+
+			options := parseMountOptions(flag, argMap)
+			mountType, exists := options.Get("type")
+			if !exists || mountType != "cache" {
+				continue
+			}
+
+			var key string
+
+			if id, exists := options.Get("id"); exists {
+				// Use the kebab-case of the "id" value as the key
+				key = lo.KebabCase(id)
+			} else if target, exists := options.Get("target"); exists {
+				// Use the kebab-case of the "target" value as the fallback key
+				key = lo.KebabCase(target)
+			} else {
+				// Skip if neither "id" nor "target" is present
+				continue
+			}
+
+			data.Set(".cache-"+key, options)
 		}
 	}
 

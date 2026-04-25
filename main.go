@@ -3,8 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
+
+	flag "github.com/spf13/pflag"
 )
-import flag "github.com/spf13/pflag"
 
 func printHelp() {
 	fmt.Println("dockerfile-tools <command> [options]")
@@ -74,7 +75,7 @@ func main() {
 	case "list-cache-mounts":
 		listCacheMountsCmd := flag.NewFlagSet("list-cache-mounts", flag.ExitOnError)
 		dockerfile := listCacheMountsCmd.String("dockerfile", "", "path to Dockerfile")
-    args := listCacheMountsCmd.StringSlice("arg", nil, "comma-delimited ARG key-value pairs (can be provided multiple times)")
+		args := listCacheMountsCmd.StringSlice("arg", nil, "comma-delimited ARG key-value pairs (can be provided multiple times)")
 		listCacheMountsHelp := listCacheMountsCmd.Bool("help", false, "display help")
 		listCacheMountsCmd.Parse(os.Args[2:])
 
@@ -90,7 +91,6 @@ func main() {
 			os.Exit(0)
 		}
 
-
 		if *dockerfile == "" {
 			fmt.Println("Please provide a path to the Dockerfile using --dockerfile")
 			os.Exit(1)
@@ -100,7 +100,7 @@ func main() {
 		ListCacheMounts(*dockerfile, *args)
 
 	default:
-		fmt.Println("Error: expected 'ast' or 'list-stages' subcommands")
+		fmt.Println("Error: expected 'ast', 'list-stages', or 'list-cache-mounts' subcommands")
 		printHelp()
 		os.Exit(1)
 	}
