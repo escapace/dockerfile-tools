@@ -1,13 +1,12 @@
 # dockerfile-tools
 
-A command-line application designed to assist with analyzing and extracting
-information from Dockerfiles. It provides three main functionalities: generating a
-JSON Abstract Syntax Tree (AST) from a Dockerfile, listing the build stages defined
-within a Dockerfile, and listing cache mounts in RUN instructions.
+Command-line utility for parsing Dockerfiles into JSON syntax trees, listing named build stages, and extracting cache mounts with `ARG` value expansion.
+
+GitHub Action: [escapace/action-dockerfile-tools](https://github.com/escapace/action-dockerfile-tools)
 
 ## Usage
 
-The application provides the following commands:
+Available commands:
 
 ### ast
 
