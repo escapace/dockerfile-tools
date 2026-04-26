@@ -175,6 +175,39 @@ func TestParseMountOptionsParsesQuotedValuesAndSubstitutesArgs(t *testing.T) {
 	}
 }
 
+func stringPointer(value string) *string {
+	return &value
+}
+
+func TestExtractArgDeclarationsReturnsAllDeclarationsInOrder(t *testing.T) {
+	ast := parseDockerfileAST(t, `# syntax=docker/dockerfile:1
+ARG GLOBAL
+ARG EMPTY=
+ARG FIRST=1 SECOND THIRD=three=four
+FROM alpine AS build
+ARG STAGE_ONLY=value
+ARG QUOTED="a,b c"
+ARG REF=$GLOBAL
+ARG EXPANDED=${GLOBAL}
+`)
+
+	got := extractArgDeclarations(ast)
+	want := []ArgDeclaration{
+		{Name: "GLOBAL", DefaultValue: nil, Line: 2},
+		{Name: "EMPTY", DefaultValue: stringPointer(""), Line: 3},
+		{Name: "FIRST", DefaultValue: stringPointer("1"), Line: 4},
+		{Name: "SECOND", DefaultValue: nil, Line: 4},
+		{Name: "THIRD", DefaultValue: stringPointer("three=four"), Line: 4},
+		{Name: "STAGE_ONLY", DefaultValue: stringPointer("value"), Line: 6},
+		{Name: "QUOTED", DefaultValue: stringPointer(`"a,b c"`), Line: 7},
+		{Name: "REF", DefaultValue: stringPointer("$GLOBAL"), Line: 8},
+		{Name: "EXPANDED", DefaultValue: stringPointer("${GLOBAL}"), Line: 9},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("extractArgDeclarations() = %#v, want %#v", got, want)
+	}
+}
+
 func TestExtractStageNamesReturnsAliasedStagesOnly(t *testing.T) {
 	ast := parseDockerfileAST(t, `FROM golang:1.26 AS build
 FROM build AS test
@@ -221,6 +254,57 @@ RUN go build ./...
 	}
 	if ast.Children[1].Original != "FROM golang:${GO_VERSION} AS build" {
 		t.Fatalf("second child Original = %q", ast.Children[1].Original)
+	}
+}
+
+func TestListArgsPrintsJSON(t *testing.T) {
+	dockerfile := writeTempDockerfile(t, `# syntax=docker/dockerfile:1
+ARG GLOBAL
+ARG EMPTY=
+ARG FIRST=1 SECOND
+FROM alpine AS build
+ARG STAGE_ONLY=value
+`)
+
+	output := captureStdout(t, func() {
+		ListArgs(dockerfile)
+	})
+
+	var got []ArgDeclaration
+	if err := json.Unmarshal([]byte(output), &got); err != nil {
+		t.Fatalf("unmarshal ARG declarations JSON: %v\noutput: %s", err, output)
+	}
+
+	want := []ArgDeclaration{
+		{Name: "GLOBAL", DefaultValue: nil, Line: 2},
+		{Name: "EMPTY", DefaultValue: stringPointer(""), Line: 3},
+		{Name: "FIRST", DefaultValue: stringPointer("1"), Line: 4},
+		{Name: "SECOND", DefaultValue: nil, Line: 4},
+		{Name: "STAGE_ONLY", DefaultValue: stringPointer("value"), Line: 6},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("ListArgs() output = %#v, want %#v", got, want)
+	}
+}
+
+func TestListArgsWithoutDeclarationsPrintsEmptyJSONArray(t *testing.T) {
+	dockerfile := writeTempDockerfile(t, `FROM alpine AS build
+RUN echo hello
+`)
+
+	output := captureStdout(t, func() {
+		ListArgs(dockerfile)
+	})
+
+	var got []ArgDeclaration
+	if err := json.Unmarshal([]byte(output), &got); err != nil {
+		t.Fatalf("unmarshal empty ARG declarations JSON: %v\noutput: %s", err, output)
+	}
+	if len(got) != 0 {
+		t.Fatalf("ListArgs() output = %#v, want empty slice", got)
+	}
+	if strings.TrimSpace(output) != "[]" {
+		t.Fatalf("ListArgs() raw output = %q, want []", strings.TrimSpace(output))
 	}
 }
 
@@ -283,7 +367,7 @@ RUN --mount=type=bind,target=/src echo not-a-cache-mount
 func TestPrintHelpIncludesAllCommands(t *testing.T) {
 	output := captureStdout(t, printHelp)
 
-	for _, command := range []string{"ast", "list-stages", "list-cache-mounts"} {
+	for _, command := range []string{"ast", "list-args", "list-stages", "list-cache-mounts"} {
 		if !strings.Contains(output, command) {
 			t.Fatalf("help output missing %q\noutput: %s", command, output)
 		}
@@ -305,7 +389,7 @@ func TestMainInvalidSubcommandExitsOne(t *testing.T) {
 	if exitCode != 1 {
 		t.Fatalf("exit code = %d, want 1\noutput: %s", exitCode, output)
 	}
-	if !strings.Contains(output, "Error: expected 'ast', 'list-stages', or 'list-cache-mounts' subcommands") {
+	if !strings.Contains(output, "Error: expected 'ast', 'list-args', 'list-stages', or 'list-cache-mounts' subcommands") {
 		t.Fatalf("unexpected output: %s", output)
 	}
 }
@@ -320,6 +404,11 @@ func TestMainSubcommandHelp(t *testing.T) {
 			name:           "ast",
 			args:           []string{"ast", "--help"},
 			wantOutputPart: "dockerfile-tools ast [options]",
+		},
+		{
+			name:           "list-args",
+			args:           []string{"list-args", "--help"},
+			wantOutputPart: "dockerfile-tools list-args [options]",
 		},
 		{
 			name:           "list-stages",
@@ -352,6 +441,7 @@ func TestMainRequiresDockerfileArgument(t *testing.T) {
 		args []string
 	}{
 		{name: "ast", args: []string{"ast"}},
+		{name: "list-args", args: []string{"list-args"}},
 		{name: "list-stages", args: []string{"list-stages"}},
 		{name: "list-cache-mounts", args: []string{"list-cache-mounts"}},
 	}
@@ -371,6 +461,7 @@ func TestMainRequiresDockerfileArgument(t *testing.T) {
 
 func TestMainCommandsSucceed(t *testing.T) {
 	dockerfile := writeTempDockerfile(t, `# syntax=docker/dockerfile:1
+ARG GLOBAL=value
 FROM golang:1.26 AS build
 RUN --mount=type=cache,target=/go/pkg/mod go test ./...
 `)
@@ -384,6 +475,11 @@ RUN --mount=type=cache,target=/go/pkg/mod go test ./...
 			name:           "ast",
 			args:           []string{"ast", "--dockerfile", dockerfile},
 			wantOutputPart: `"Value": "FROM"`,
+		},
+		{
+			name:           "list-args",
+			args:           []string{"list-args", "--dockerfile", dockerfile},
+			wantOutputPart: `"name": "GLOBAL"`,
 		},
 		{
 			name:           "list-stages",

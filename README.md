@@ -1,6 +1,6 @@
 # dockerfile-tools
 
-Command-line utility for parsing Dockerfiles into JSON syntax trees, listing named build stages, and extracting cache mounts with `ARG` value expansion.
+Command-line utility for parsing Dockerfiles into JSON syntax trees, listing `ARG` declarations, listing named build stages, and extracting cache mounts with `ARG` value expansion.
 
 GitHub Action: [escapace/action-dockerfile-tools](https://github.com/escapace/action-dockerfile-tools)
 
@@ -21,6 +21,42 @@ Generates a JSON AST from a specified Dockerfile.
 
 ```bash
 dockerfile-tools ast --dockerfile path/to/Dockerfile
+```
+
+### list-args
+
+Lists `ARG` declarations in the order they appear in the Dockerfile.
+Each declaration includes the argument name, the declared default value when present, and the
+source line number. Declarations without a default value are reported with `"defaultValue": null`.
+If an explicit empty default is declared, for example `ARG EMPTY=`, the output keeps that as an
+empty string.
+
+Example output:
+
+```json
+[
+  {
+    "name": "GO_VERSION",
+    "defaultValue": "1.26",
+    "line": 1
+  },
+  {
+    "name": "TARGETPLATFORM",
+    "defaultValue": null,
+    "line": 2
+  }
+]
+```
+
+#### Options
+
+- `--dockerfile string`: Path to the Dockerfile.
+- `--help`: Display help information for the `list-args` command.
+
+#### Example
+
+```bash
+dockerfile-tools list-args --dockerfile path/to/Dockerfile
 ```
 
 ### list-stages
