@@ -28,7 +28,7 @@ jobs:
           go test ./...
           go build ./...
       - name: Install cosign
-        uses: sigstore/cosign-installer@v4.1.1 # installs cosign
+        uses: sigstore/cosign-installer@v4.1.2 # installs cosign
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v7.2.1 # run goreleaser
         with:
