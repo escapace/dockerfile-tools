@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v6.0.3
         with:
           fetch-depth: 0 # this is important, otherwise it won't checkout the full tree (i.e. no previous tags)
       - name: Set up Go
